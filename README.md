@@ -31,6 +31,29 @@ Copy the folder into your skills directory:
 Claude Code triggers it automatically on UPMEM/DPU work; or invoke it
 explicitly with `/upmem-dpu-coding-style`.
 
+## Example
+
+Ask for a review of a kernel fragment:
+
+> review this DPU kernel loop
+
+```c
+float score = 0;
+struct rec r;                          /* stack DMA target */
+for (int i = me(); i < n; i += NR_TASKLETS) {
+    mram_read(&records[i], &r, sizeof(r));   /* one tiny DMA per record */
+    score += r.weight / 100.0f;
+    mutex_lock(m); total += score; mutex_unlock(m);
+}
+```
+
+With the skill loaded, the review flags each line against the checklist:
+
+- `float` + `/ 100.0f` — no FPU; use fixed-point with a power-of-two scale (`pim-friendly.md` §1, §3)
+- `struct rec r` — WRAM DMA target missing `__dma_aligned`, size not 8-byte checked (`kernel.md` §3)
+- one record per `mram_read` — batch several records per DMA to amortize fixed cost (`kernel.md` §5)
+- shared `total` under a mutex every iteration — accumulate per-tasklet partials, reduce on the host (`pim-friendly.md` §4)
+
 ## Sources
 
 Official UPMEM repositories read for the conventions:
